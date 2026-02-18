@@ -36,3 +36,14 @@ export interface School {
   substituteDirector: string;
   pedagogicalCoordinator: string;
 }
+
+export interface Invitation {
+  id: string;
+  name: string;
+  email: string;
+  role: UserProfile['role'];
+  status: 'pending' | 'accepted';
+  deliveryStatus?: 'SUCCESS' | 'ERROR' | 'PENDING';
+  createdAt: string;
+  schoolId: string;
+}

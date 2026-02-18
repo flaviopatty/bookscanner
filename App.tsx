@@ -9,7 +9,7 @@ import SchoolForm from './components/SchoolForm';
 import Invite from './pages/Invite';
 import StudentDashboard from './pages/StudentDashboard';
 import BottomNav from './components/BottomNav';
-import { Book, ViewType, UserProfile, School } from './types';
+import { Book, ViewType, UserProfile, School, Invitation } from './types';
 import { INITIAL_BOOKS } from './constants';
 import { bookService } from './services/bookService';
 import { schoolService } from './services/schoolService';
@@ -31,6 +31,7 @@ const App: React.FC = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showSchoolModal, setShowSchoolModal] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [invites, setInvites] = useState<Invitation[]>([]);
 
   const [user, setUser] = useState<User | null>(null);
 
@@ -61,6 +62,11 @@ const App: React.FC = () => {
       setBooks(booksData);
       setUserProfile(profileData);
       setSchool(schoolData);
+
+      if (schoolData?.id) {
+        const invitesData = await schoolService.getInvites(schoolData.id);
+        setInvites(invitesData);
+      }
 
       // Direcionar Aluno para sua página exclusiva
       if (profileData?.role === 'Aluno') {
@@ -221,6 +227,7 @@ const App: React.FC = () => {
             <Invite
               onInvite={handleInvite}
               onCancel={() => setCurrentView('HOME')}
+              sentInvites={invites}
             />
           )}
           {currentView === 'SETTINGS' && (

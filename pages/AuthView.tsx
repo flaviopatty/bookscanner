@@ -13,11 +13,13 @@ const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
     const [name, setName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [message, setMessage] = useState<string | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        setMessage(null);
 
         try {
             if (isLogin) {
@@ -30,6 +32,25 @@ const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
         } catch (err: any) {
             console.error("Erro na autenticação:", err);
             setError(err.message || "Ocorreu um erro inesperado.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleForgotPassword = async () => {
+        if (!email) {
+            setError("Por favor, digite seu e-mail primeiro.");
+            return;
+        }
+        setLoading(true);
+        setError(null);
+        setMessage(null);
+        try {
+            await authService.resetPassword(email);
+            setMessage("E-mail de recuperação enviado com sucesso!");
+        } catch (err: any) {
+            console.error("Erro ao recuperar senha:", err);
+            setError("Erro ao enviar e-mail de recuperação. Verifique o e-mail digitado.");
         } finally {
             setLoading(false);
         }
@@ -53,13 +74,13 @@ const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
             <div className="w-full max-w-sm bg-white dark:bg-primary/5 p-8 rounded-[2.5rem] shadow-2xl shadow-primary/5 border border-primary/10 backdrop-blur-sm">
                 <div className="flex gap-4 mb-8 p-1 bg-slate-100 dark:bg-white/5 rounded-2xl">
                     <button
-                        onClick={() => setIsLogin(true)}
+                        onClick={() => { setIsLogin(true); setError(null); setMessage(null); }}
                         className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${isLogin ? 'bg-white dark:bg-primary text-primary dark:text-white shadow-lg' : 'text-slate-400'}`}
                     >
                         Entrar
                     </button>
                     <button
-                        onClick={() => setIsLogin(false)}
+                        onClick={() => { setIsLogin(false); setError(null); setMessage(null); }}
                         className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${!isLogin ? 'bg-white dark:bg-primary text-primary dark:text-white shadow-lg' : 'text-slate-400'}`}
                     >
                         Criar Conta
@@ -102,7 +123,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
                     <div className="space-y-1">
                         <div className="flex justify-between items-center ml-1">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Senha</label>
-                            {isLogin && <button type="button" className="text-[10px] font-black text-primary uppercase tracking-widest">Esqueci</button>}
+                            {isLogin && <button onClick={handleForgotPassword} type="button" className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline transition-all">Esqueci</button>}
                         </div>
                         <div className="relative">
                             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary">lock</span>
@@ -112,7 +133,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="••••••••"
                                 className="w-full bg-slate-50 dark:bg-white/5 border-2 border-transparent focus:border-primary/30 rounded-2xl py-4 pl-12 pr-4 outline-none font-bold text-slate-700 dark:text-white transition-all"
-                                required
+                                required={isLogin}
                             />
                         </div>
                     </div>
@@ -123,10 +144,16 @@ const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
                         </div>
                     )}
 
+                    {message && (
+                        <div className="p-4 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 rounded-2xl">
+                            <p className="text-[10px] font-bold text-emerald-500 text-center uppercase tracking-wider">{message}</p>
+                        </div>
+                    )}
+
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-primary hover:bg-[#11c4d4]/90 text-white font-black py-5 rounded-[1.5rem] shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3 active:scale-[0.98] mt-4"
+                        className="w-full bg-primary hover:bg-[#11c4d4]/90 text-white font-black py-5 rounded-[1.5rem] shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3 active:scale-[0.98] mt-4 disabled:opacity-50"
                     >
                         {loading ? (
                             <div className="size-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
@@ -142,7 +169,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
                 <p className="mt-8 text-center text-slate-400 text-[10px] font-black uppercase tracking-[2px]">
                     {isLogin ? "Não tem uma conta?" : "Já possui conta?"}
                     <button
-                        onClick={() => setIsLogin(!isLogin)}
+                        onClick={() => { setIsLogin(!isLogin); setError(null); setMessage(null); }}
                         className="text-primary ml-2 hover:underline"
                     >
                         {isLogin ? "Registrar" : "Entrar"}

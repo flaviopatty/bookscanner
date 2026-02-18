@@ -1,13 +1,14 @@
 
 import React, { useState } from 'react';
-import { UserProfile } from '../types';
+import { UserProfile, Invitation } from '../types';
 
 interface InviteProps {
     onInvite: (data: { name: string, email: string, role: UserProfile['role'] }) => Promise<void>;
     onCancel: () => void;
+    sentInvites?: Invitation[];
 }
 
-const Invite: React.FC<InviteProps> = ({ onInvite, onCancel }) => {
+const Invite: React.FC<InviteProps> = ({ onInvite, onCancel, sentInvites = [] }) => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [role, setRole] = useState<UserProfile['role']>('Aluno');
@@ -45,7 +46,7 @@ const Invite: React.FC<InviteProps> = ({ onInvite, onCancel }) => {
                 </p>
             </header>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6 mb-12">
                 <div className="space-y-2">
                     <label className="text-[11px] font-black uppercase tracking-[2px] text-slate-400 ml-1">
                         Nome Completo
@@ -131,10 +132,55 @@ const Invite: React.FC<InviteProps> = ({ onInvite, onCancel }) => {
                         onClick={onCancel}
                         className="w-full py-4 text-slate-400 font-bold hover:text-slate-600 transition-colors"
                     >
-                        CANCELAR
+                        VOLTAR PARA O INÍCIO
                     </button>
                 </div>
             </form>
+
+            {/* List of Sent Invites */}
+            {sentInvites.length > 0 && (
+                <div className="mt-12 space-y-6">
+                    <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter">
+                        Convites <span className="text-primary italic">Enviados</span>
+                    </h2>
+                    <div className="space-y-3">
+                        {sentInvites.map((invite) => (
+                            <div key={invite.id} className="bg-white dark:bg-primary/5 p-4 rounded-3xl border border-primary/10 flex items-center justify-between">
+                                <div className="flex flex-col">
+                                    <span className="font-black text-slate-700 dark:text-white text-sm tracking-tight">{invite.name}</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase">{invite.email}</span>
+                                    <div className="flex gap-2 mt-1 items-center">
+                                        <span className="text-[9px] font-black bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded text-slate-500 uppercase tracking-widest">{invite.role}</span>
+                                        {invite.deliveryStatus === 'SUCCESS' && (
+                                            <span className="flex items-center gap-0.5 text-[8px] font-bold text-emerald-500 uppercase">
+                                                <span className="material-symbols-outlined text-[10px]">mail</span> Enviado
+                                            </span>
+                                        )}
+                                        {invite.deliveryStatus === 'ERROR' && (
+                                            <span className="flex items-center gap-0.5 text-[8px] font-bold text-red-500 uppercase">
+                                                <span className="material-symbols-outlined text-[10px]">error</span> Erro e-mail
+                                            </span>
+                                        )}
+                                        {invite.deliveryStatus === 'PENDING' && (
+                                            <span className="flex items-center gap-0.5 text-[8px] font-bold text-amber-500 uppercase">
+                                                <span className="material-symbols-outlined text-[10px] animate-pulse">hourglass_empty</span> Processando
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${invite.status === 'accepted' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-amber-50 border-amber-100 text-amber-500'}`}>
+                                    <span className={`material-symbols-outlined text-sm ${invite.status === 'accepted' ? 'filled-icon' : ''}`}>
+                                        {invite.status === 'accepted' ? 'check_circle' : 'pending'}
+                                    </span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest">
+                                        {invite.status === 'accepted' ? 'Acessou' : 'Pendente'}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="mt-8 p-4 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-200 dark:border-amber-900/30">
                 <div className="flex gap-3">

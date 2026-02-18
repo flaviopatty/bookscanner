@@ -1,50 +1,36 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// A chave API é injetada pelo Vite via process.env.API_KEY conforme vite.config.ts
+const genAI = new GoogleGenerativeAI(process.env.API_KEY || '');
 
 export const analyzeBookCover = async (base64Image: string) => {
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
-      contents: [
-        {
-          parts: [
-            {
-              inlineData: {
-                mimeType: 'image/jpeg',
-                data: base64Image.split(',')[1] || base64Image,
-              },
-            },
-            {
-              text: "Analise a capa deste livro e extraia as seguintes informações: Título, Autor, Editora, ISBN e Quantidade de Páginas. Retorne um objeto JSON válido.",
-            },
-          ],
-        },
-      ],
-      config: {
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
+          type: SchemaType.OBJECT,
           properties: {
             title: {
-              type: Type.STRING,
+              type: SchemaType.STRING,
               description: 'O título do livro.',
             },
             author: {
-              type: Type.STRING,
+              type: SchemaType.STRING,
               description: 'O autor do livro.',
             },
             publisher: {
-              type: Type.STRING,
+              type: SchemaType.STRING,
               description: 'A editora do livro.',
             },
             isbn: {
-              type: Type.STRING,
-              description: 'O ISBN do livro.',
+              type: SchemaType.STRING,
+              description: 'O ISBN do livro (se visível).',
             },
             pageCount: {
-              type: Type.NUMBER,
+              type: SchemaType.NUMBER,
               description: 'A quantidade de páginas do livro (se visível).',
             },
           },
@@ -53,10 +39,26 @@ export const analyzeBookCover = async (base64Image: string) => {
       },
     });
 
-    const result = JSON.parse(response.text || '{}');
-    return result;
+    const imageData = base64Image.split(',')[1] || base64Image;
+
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          mimeType: "image/jpeg",
+          data: imageData
+        }
+      },
+      {
+        text: "Analise a capa deste livro e extraia as seguintes informações: Título, Autor, Editora, ISBN e Quantidade de Páginas. Se o ISBN não estiver na capa mas você reconhecer o livro, pode incluir. Retorne apenas o JSON."
+      }
+    ]);
+
+    const response = await result.response;
+    const text = response.text();
+    return JSON.parse(text);
   } catch (error) {
-    console.error("Erro na API Gemini:", error);
+    console.error("Erro detalhado na API Gemini:", error);
     throw error;
   }
 };
+

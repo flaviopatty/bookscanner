@@ -5,9 +5,10 @@ import {
     createUserWithEmailAndPassword,
     signOut,
     onAuthStateChanged,
+    sendPasswordResetEmail,
     User
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { UserProfile } from '../types';
 
 export const authService = {
@@ -26,7 +27,23 @@ export const authService = {
     // Login com e-mail e senha
     async login(email: string, pass: string) {
         const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-        return userCredential.user;
+        const user = userCredential.user;
+
+        // Ao logar, verificar se existe um convite pendente para este email e marcá-lo como aceito
+        const inviteId = email.replace(/\./g, '_');
+        const inviteRef = doc(db, 'invites', inviteId);
+        const inviteSnap = await getDoc(inviteRef);
+
+        if (inviteSnap.exists() && inviteSnap.data().status === 'pending') {
+            await updateDoc(inviteRef, { status: 'accepted' });
+        }
+
+        return user;
+    },
+
+    // Recuperar senha
+    async resetPassword(email: string) {
+        await sendPasswordResetEmail(auth, email);
     },
 
     // Cadastro de novo usuário (Diretor)

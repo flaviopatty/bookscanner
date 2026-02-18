@@ -1,7 +1,7 @@
 
 import { db } from './firebase';
-import { collection, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { School, UserProfile } from '../types';
+import { collection, doc, getDoc, setDoc, updateDoc, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { School, UserProfile, Invitation } from '../types';
 
 const SCHOOLS_COLLECTION = 'schools';
 const USER_PROFILE_DOC = 'user/profile'; // For simplicity, single user profile for now
@@ -77,13 +77,75 @@ export const schoolService = {
 
         await setDoc(userRef, newUser);
 
-        // Also create a record in 'invites' for tracking
-        const inviteRef = doc(collection(db, 'invites'));
+        // Use email as ID for the invite to easily track/update status
+        const inviteId = data.email.replace(/\./g, '_');
+        const inviteRef = doc(db, 'invites', inviteId);
         await setDoc(inviteRef, {
             ...newUser,
+            id: inviteId,
             status: 'pending'
         });
 
+        // Adicionar gatilho para envio de e-mail (Extensão Trigger Email)
+        const mailId = inviteId; // Usar o mesmo ID para facilitar o rastreio
+        const mailRef = doc(db, 'mail', mailId);
+        await setDoc(mailRef, {
+            to: data.email,
+            inviteId: inviteId, // Referência de volta
+            message: {
+                subject: 'Convite: BookScanner Pro AI',
+                html: `
+                    <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                        <h2 style="color: #11c4d4;">Olá, ${data.name}!</h2>
+                        <p>Você foi convidado para acessar o <b>BookScanner Pro AI</b> como <strong>${data.role}</strong>.</p>
+                        <p>Abaixo estão suas credenciais de acesso provisórias:</p>
+                        <div style="background: #f4f4f4; padding: 15px; border-radius: 8px; font-family: monospace;">
+                            <p style="margin: 5px 0;"><strong>E-mail:</strong> ${data.email}</p>
+                            <p style="margin: 5px 0;"><strong>Senha Provisória:</strong> ${tempPassword}</p>
+                        </div>
+                        <p style="font-size: 12px; color: #666; margin-top: 20px;">
+                            * Por segurança, você deverá trocar esta senha no seu primeiro acesso ao sistema.
+                        </p>
+                        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                        <p style="font-size: 11px; color: #999; text-align: center;">BookScanner Pro AI - Inteligência na palma da sua mão</p>
+                    </div>
+                `
+            }
+        });
+
         return tempPassword;
+    },
+
+    async getInvites(schoolId: string): Promise<Invitation[]> {
+        const q = query(
+            collection(db, 'invites'),
+            where('schoolId', '==', schoolId),
+            orderBy('createdAt', 'desc')
+        );
+        const querySnapshot = await getDocs(q);
+
+        const invites = await Promise.all(querySnapshot.docs.map(async (d) => {
+            const data = d.data();
+            const inviteId = d.id;
+
+            // Tentar buscar o status de entrega do e-mail
+            const mailRef = doc(db, 'mail', inviteId);
+            const mailSnap = await getDoc(mailRef);
+            let deliveryStatus: Invitation['deliveryStatus'] = 'PENDING';
+
+            if (mailSnap.exists()) {
+                const mailData = mailSnap.data();
+                if (mailData.delivery?.state === 'SUCCESS') deliveryStatus = 'SUCCESS';
+                if (mailData.delivery?.state === 'ERROR') deliveryStatus = 'ERROR';
+            }
+
+            return {
+                ...data,
+                id: inviteId,
+                deliveryStatus
+            } as Invitation;
+        }));
+
+        return invites;
     }
 };

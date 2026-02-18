@@ -34,7 +34,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ bookCount, onLogout
                         <div className="size-20 bg-primary/20 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
                             <span className="material-symbols-outlined text-4xl text-primary filled-icon">menu_book</span>
                         </div>
-                        <h2 className="text-sm font-black uppercase tracking-[4px] text-slate-400">Total de Acervo</h2>
+                        <h2 className="text-sm font-black uppercase tracking-[4px] text-slate-400">Total de Livros</h2>
                         <div className="text-7xl font-black text-slate-800 dark:text-white tracking-tighter">
                             {bookCount}
                         </div>
@@ -44,7 +44,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ bookCount, onLogout
 
                 {/* External Link Card */}
                 <a
-                    href="#"
+                    href="https://biblioteca.casadosaplicativos.com.br"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="w-full bg-primary p-6 rounded-[2rem] shadow-xl shadow-primary/30 flex items-center justify-between group active:scale-[0.98] transition-all"
                 >
                     <div className="flex items-center gap-4">
