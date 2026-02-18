@@ -57,5 +57,33 @@ export const schoolService = {
         const randomChars = Math.random().toString(36).substring(2, 4).toUpperCase(); // 2 chars
 
         return `${acronym}-${randomNum}${randomChars}`;
+    },
+
+    async inviteUser(data: { name: string, email: string, role: UserProfile['role'], schoolId: string }): Promise<string> {
+        // In a real app, we would use Firebase Auth Admin SDK to create the user
+        // and trigger an email. For this demo/mock, we'll create a record in a 'users' collection.
+        const tempPassword = Math.random().toString(36).substring(2, 10).toUpperCase();
+
+        const userRef = doc(db, 'users', data.email.replace(/\./g, '_')); // Simple way to use email as ID
+        const newUser: UserProfile & { tempPassword?: string, createdAt: any } = {
+            name: data.name,
+            email: data.email,
+            role: data.role,
+            schoolId: data.schoolId,
+            mustChangePassword: true,
+            tempPassword: tempPassword,
+            createdAt: new Date().toISOString()
+        };
+
+        await setDoc(userRef, newUser);
+
+        // Also create a record in 'invites' for tracking
+        const inviteRef = doc(collection(db, 'invites'));
+        await setDoc(inviteRef, {
+            ...newUser,
+            status: 'pending'
+        });
+
+        return tempPassword;
     }
 };

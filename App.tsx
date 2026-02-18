@@ -6,11 +6,16 @@ import Scanner from './pages/Scanner';
 import BookForm from './components/BookForm';
 import ProfileForm from './components/ProfileForm';
 import SchoolForm from './components/SchoolForm';
+import Invite from './pages/Invite';
+import StudentDashboard from './pages/StudentDashboard';
 import BottomNav from './components/BottomNav';
 import { Book, ViewType, UserProfile, School } from './types';
 import { INITIAL_BOOKS } from './constants';
 import { bookService } from './services/bookService';
 import { schoolService } from './services/schoolService';
+import { authService } from './services/authService';
+import AuthView from './pages/AuthView';
+import { User } from 'firebase/auth';
 import { useEffect } from 'react';
 
 const App: React.FC = () => {
@@ -27,25 +32,53 @@ const App: React.FC = () => {
   const [showSchoolModal, setShowSchoolModal] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
 
+  const [user, setUser] = useState<User | null>(null);
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [booksData, profileData, schoolData] = await Promise.all([
-          bookService.getBooks(),
-          schoolService.getUserProfile(),
-          schoolService.getSchool()
-        ]);
-        setBooks(booksData);
-        setUserProfile(profileData);
-        setSchool(schoolData);
-      } catch (error) {
-        console.error("Erro ao carregar dados:", error);
-      } finally {
+    const unsubscribe = authService.subscribe(async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        await fetchData(currentUser.uid);
+      } else {
+        setBooks([]);
+        setUserProfile(null);
+        setSchool(null);
         setIsLoading(false);
       }
-    };
-    fetchData();
+    });
+
+    return () => unsubscribe();
   }, []);
+
+  const fetchData = async (uid: string) => {
+    setIsLoading(true);
+    try {
+      const [booksData, profileData, schoolData] = await Promise.all([
+        bookService.getBooks(), // Note: In a real app, these should pass uid or be gated by security rules
+        authService.getUserProfile(uid),
+        schoolService.getSchool()
+      ]);
+      setBooks(booksData);
+      setUserProfile(profileData);
+      setSchool(schoolData);
+
+      // Direcionar Aluno para sua página exclusiva
+      if (profileData?.role === 'Aluno') {
+        setCurrentView('STUDENT_HOME');
+      }
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    if (confirm("Deseja realmente sair?")) {
+      await authService.logout();
+      setCurrentView('HOME');
+    }
+  };
 
   const handleSaveProfile = async (profile: UserProfile) => {
     try {
@@ -126,6 +159,25 @@ const App: React.FC = () => {
     }
   };
 
+  const handleInvite = async (inviteData: { name: string, email: string, role: UserProfile['role'] }) => {
+    if (!school?.id) {
+      alert("Você precisa cadastrar sua escola antes de convidar alguém.");
+      return;
+    }
+
+    try {
+      const tempPassword = await schoolService.inviteUser({
+        ...inviteData,
+        schoolId: school.id
+      });
+      alert(`Convite enviado com sucesso para ${inviteData.email}!\nSenha Provisória: ${tempPassword}`);
+      setCurrentView('HOME');
+    } catch (error) {
+      console.error("Erro ao enviar convite:", error);
+      alert("Erro ao enviar convite.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-background-dark font-sans selection:bg-primary/20">
       <div className="max-w-md mx-auto min-h-screen flex flex-col relative bg-white dark:bg-background-dark shadow-2xl overflow-x-hidden">
@@ -135,8 +187,10 @@ const App: React.FC = () => {
           {isLoading ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
               <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4"></div>
-              <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Conectando ao Firebase...</p>
+              <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Verificando sessão...</p>
             </div>
+          ) : !user ? (
+            <AuthView onAuthSuccess={() => { }} />
           ) : (
             <>
               {currentView === 'HOME' && (
@@ -155,7 +209,19 @@ const App: React.FC = () => {
                   onToggleFavorite={handleToggleFavorite}
                 />
               )}
+              {currentView === 'STUDENT_HOME' && (
+                <StudentDashboard
+                  bookCount={books.length}
+                  onLogout={handleLogout}
+                />
+              )}
             </>
+          )}
+          {currentView === 'INVITE' && userProfile?.role === 'Diretor' && (
+            <Invite
+              onInvite={handleInvite}
+              onCancel={() => setCurrentView('HOME')}
+            />
           )}
           {currentView === 'SETTINGS' && (
             <div className="p-8">
@@ -167,21 +233,26 @@ const App: React.FC = () => {
                 >
                   <div className="flex items-center gap-3">
                     <span className="material-symbols-outlined text-primary">person</span>
-                    <span className="font-bold text-slate-700 dark:text-slate-200">Perfil</span>
+                    <div className="text-left">
+                      <div className="font-bold text-slate-700 dark:text-slate-200">Perfil</div>
+                      <div className="text-[10px] text-slate-400 font-bold uppercase">{userProfile?.role || 'Usuário'}</div>
+                    </div>
                   </div>
                   <span className="material-symbols-outlined text-slate-400">chevron_right</span>
                 </button>
 
-                <button
-                  onClick={() => setShowSchoolModal(true)}
-                  className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-primary/5 rounded-2xl border border-primary/5 hover:bg-primary/5 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary">school</span>
-                    <span className="font-bold text-slate-700 dark:text-slate-200">Dados da Escola</span>
-                  </div>
-                  <span className="material-symbols-outlined text-slate-400">chevron_right</span>
-                </button>
+                {userProfile?.role === 'Diretor' && (
+                  <button
+                    onClick={() => setShowSchoolModal(true)}
+                    className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-primary/5 rounded-2xl border border-primary/5 hover:bg-primary/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-primary">school</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-200">Dados da Escola</span>
+                    </div>
+                    <span className="material-symbols-outlined text-slate-400">chevron_right</span>
+                  </button>
+                )}
 
                 <div className="flex flex-col gap-2">
                   <button
@@ -202,6 +273,16 @@ const App: React.FC = () => {
                       </p>
                     </div>
                   </div>
+                </div>
+
+                <div className="pt-6 border-t border-primary/5">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 p-4 text-red-500 font-black uppercase tracking-widest text-[11px] hover:bg-red-50 dark:hover:bg-red-500/5 rounded-2xl transition-colors"
+                  >
+                    <span className="material-symbols-outlined font-variation-fill">logout</span>
+                    Sair da Conta
+                  </button>
                 </div>
               </div>
             </div>
@@ -240,7 +321,13 @@ const App: React.FC = () => {
           />
         )}
 
-        <BottomNav currentView={currentView} onViewChange={handleViewChange} />
+        {user && userProfile?.role !== 'Aluno' && (
+          <BottomNav
+            currentView={currentView}
+            onViewChange={handleViewChange}
+            userRole={userProfile?.role}
+          />
+        )}
       </div>
     </div >
   );

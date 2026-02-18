@@ -9,9 +9,10 @@ interface ProfileFormProps {
 }
 
 const ProfileForm: React.FC<ProfileFormProps> = ({ initialData, onSave, onCancel }) => {
-    const [formData, setFormData] = useState({
-        name: initialData?.name || '',
-        role: initialData?.role || ''
+    const [formData, setFormData] = useState<UserProfile>(initialData || {
+        name: '',
+        email: '',
+        role: 'Aluno'
     });
     const [isAnimating, setIsAnimating] = useState(false);
 
@@ -36,7 +37,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ initialData, onSave, onCancel
                 </button>
             </header>
 
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-6 pb-32">
                 <form id="profile-form" onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-1.5">
                         <label className="text-xs font-extrabold text-slate-400 uppercase tracking-widest ml-1">Nome Completo</label>
@@ -53,16 +54,35 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ initialData, onSave, onCancel
                     </div>
 
                     <div className="space-y-1.5">
-                        <label className="text-xs font-extrabold text-slate-400 uppercase tracking-widest ml-1">Cargo / Função</label>
+                        <label className="text-xs font-extrabold text-slate-400 uppercase tracking-widest ml-1">E-mail</label>
                         <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-primary text-xl">work</span>
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-primary text-xl">mail</span>
                             <input
                                 required
-                                value={formData.role}
-                                onChange={e => setFormData(prev => ({ ...prev, role: e.target.value }))}
-                                placeholder="Ex: Bibliotecário"
+                                type="email"
+                                value={formData.email}
+                                onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                                placeholder="seu@email.com"
                                 className="w-full h-14 pl-12 pr-4 bg-slate-50 dark:bg-primary/5 border-2 border-transparent focus:border-primary/30 focus:bg-white dark:focus:bg-transparent rounded-2xl transition-all font-bold text-slate-900 dark:text-white outline-none"
                             />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-extrabold text-slate-400 uppercase tracking-widest ml-1">Regra de Acesso</label>
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-primary text-xl">admin_panel_settings</span>
+                            <select
+                                required
+                                value={formData.role}
+                                onChange={e => setFormData(prev => ({ ...prev, role: e.target.value as UserProfile['role'] }))}
+                                className="w-full h-14 pl-12 pr-4 bg-slate-50 dark:bg-primary/5 border-2 border-transparent focus:border-primary/30 focus:bg-white dark:focus:bg-transparent rounded-2xl transition-all font-bold text-slate-900 dark:text-white outline-none appearance-none"
+                            >
+                                <option value="Diretor">Diretor</option>
+                                <option value="Funcionário">Funcionário</option>
+                                <option value="Aluno">Aluno</option>
+                            </select>
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 pointer-events-none">expand_more</span>
                         </div>
                     </div>
                 </form>

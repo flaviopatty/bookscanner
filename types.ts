@@ -17,11 +17,14 @@ export interface ScanStat {
   date?: string;
 }
 
-export type ViewType = 'HOME' | 'LIBRARY' | 'SCAN' | 'STATS' | 'SETTINGS';
+export type ViewType = 'HOME' | 'LIBRARY' | 'SCAN' | 'STATS' | 'SETTINGS' | 'INVITE' | 'STUDENT_HOME';
 
 export interface UserProfile {
   name: string;
-  role: string;
+  email: string;
+  role: 'Diretor' | 'Funcionário' | 'Aluno';
+  schoolId?: string;
+  mustChangePassword?: boolean;
 }
 
 export interface School {
