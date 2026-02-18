@@ -1,0 +1,7 @@
+{
+  "name": "BookScanner AI",
+  "description": "Um aplicativo sofisticado de gerenciamento de livros alimentado por IA Gemini. Escaneie capas de livros para extrair automaticamente títulos e autores, acompanhe suas estatísticas de leitura e gerencie sua biblioteca pessoal.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
