@@ -52,28 +52,33 @@ const App: React.FC = () => {
   }, []);
 
   const fetchData = async (uid: string) => {
+    console.log("[App] Iniciando busca de dados para UID:", uid);
     setIsLoading(true);
     try {
+      console.log("[App] Chamando serviços em paralelo...");
       const [booksData, profileData, schoolData] = await Promise.all([
-        bookService.getBooks(), // Note: In a real app, these should pass uid or be gated by security rules
-        authService.getUserProfile(uid),
-        schoolService.getSchool()
+        bookService.getBooks().then(d => { console.log("[App] Livros carregados"); return d; }),
+        authService.getUserProfile(uid).then(d => { console.log("[App] Perfil carregado"); return d; }),
+        schoolService.getSchool().then(d => { console.log("[App] Escola carregada"); return d; })
       ]);
+
       setBooks(booksData);
       setUserProfile(profileData);
       setSchool(schoolData);
 
       if (schoolData?.id) {
+        console.log("[App] Buscando convites para escola:", schoolData.id);
         const invitesData = await schoolService.getInvites(schoolData.id);
         setInvites(invitesData);
       }
 
-      // Direcionar Aluno para sua página exclusiva
       if (profileData?.role === 'Aluno') {
         setCurrentView('STUDENT_HOME');
       }
+      console.log("[App] Todos os dados iniciais carregados com sucesso");
     } catch (error) {
-      console.error("Erro ao carregar dados:", error);
+      console.error("[App] Erro crítico ao carregar dados:", error);
+      alert("Houve um problema de conexão com o banco de dados. Verifique o console.");
     } finally {
       setIsLoading(false);
     }
@@ -132,9 +137,9 @@ const App: React.FC = () => {
 
       setScannedBook(null);
       setCurrentView('LIBRARY');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao salvar livro no Firebase:", error);
-      alert("Erro ao salvar livro. Verifique as configurações do Firestore.");
+      alert(`Erro ao salvar livro: ${error.message || 'Verifique as configurações do Firestore.'}`);
     }
   };
 

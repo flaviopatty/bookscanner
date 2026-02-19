@@ -66,7 +66,7 @@ const Scanner: React.FC<ScannerProps> = ({ onBookScanned, onClose }) => {
           isbn: result.isbn || '',
           pageCount: result.pageCount,
           scannedAt: new Date().toISOString().split('T')[0],
-          coverUrl: imageData,
+          coverUrl: '',
         };
         onBookScanned(newBook);
       } catch (err: any) {
@@ -171,7 +171,7 @@ const Scanner: React.FC<ScannerProps> = ({ onBookScanned, onClose }) => {
                         isbn: result.isbn || '',
                         pageCount: result.pageCount,
                         scannedAt: new Date().toISOString().split('T')[0],
-                        coverUrl: base64String,
+                        coverUrl: '',
                       });
                     } catch (err: any) {
                       setError(err.message || 'Falha ao analisar a imagem. Tente novamente.');

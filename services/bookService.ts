@@ -18,7 +18,8 @@ const COLLECTION_NAME = 'books';
 export const bookService = {
     // Obter todos os livros
     async getBooks(): Promise<Book[]> {
-        const q = query(collection(db, COLLECTION_NAME), orderBy('scannedAt', 'desc'));
+        // Removendo orderBy temporariamente para diagnóstico de índice
+        const q = query(collection(db, COLLECTION_NAME));
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(doc => ({
             ...doc.data(),
@@ -26,10 +27,15 @@ export const bookService = {
         } as Book));
     },
 
-    // Adicionar um novo livro
     async addBook(book: Omit<Book, 'id'>): Promise<string> {
+        // Limpar campos undefined para evitar erro no Firestore
+        const cleanData = Object.entries(book).reduce((acc, [key, value]) => {
+            if (value !== undefined) acc[key] = value;
+            return acc;
+        }, {} as any);
+
         const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-            ...book,
+            ...cleanData,
             createdAt: serverTimestamp(),
         });
         return docRef.id;

@@ -33,7 +33,7 @@ const BookForm: React.FC<BookFormProps> = ({ initialData, onSave, onCancel }) =>
             publisher: formData.publisher,
             isbn: formData.isbn,
             coverUrl: formData.coverUrl,
-            pageCount: formData.pageCount ? Number(formData.pageCount) : undefined,
+            pageCount: formData.pageCount ? Number(formData.pageCount) : null,
             scannedAt: initialData?.scannedAt || new Date().toISOString().split('T')[0],
             isFavorite: initialData?.isFavorite || false,
         };
