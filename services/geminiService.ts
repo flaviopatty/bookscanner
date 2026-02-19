@@ -1,64 +1,60 @@
-
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
-
-// A chave API é injetada pelo Vite via process.env.API_KEY conforme vite.config.ts
-const genAI = new GoogleGenerativeAI(process.env.API_KEY || '');
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const analyzeBookCover = async (base64Image: string) => {
-  try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: SchemaType.OBJECT,
-          properties: {
-            title: {
-              type: SchemaType.STRING,
-              description: 'O título do livro.',
-            },
-            author: {
-              type: SchemaType.STRING,
-              description: 'O autor do livro.',
-            },
-            publisher: {
-              type: SchemaType.STRING,
-              description: 'A editora do livro.',
-            },
-            isbn: {
-              type: SchemaType.STRING,
-              description: 'O ISBN do livro (se visível).',
-            },
-            pageCount: {
-              type: SchemaType.NUMBER,
-              description: 'A quantidade de páginas do livro (se visível).',
-            },
-          },
-          required: ["title", "author"],
-        },
-      },
-    });
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || '';
 
-    const imageData = base64Image.split(',')[1] || base64Image;
-
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType: "image/jpeg",
-          data: imageData
-        }
-      },
-      {
-        text: "Analise a capa deste livro e extraia as seguintes informações: Título, Autor, Editora, ISBN e Quantidade de Páginas. Se o ISBN não estiver na capa mas você reconhecer o livro, pode incluir. Retorne apenas o JSON."
-      }
-    ]);
-
-    const response = await result.response;
-    const text = response.text();
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Erro detalhado na API Gemini:", error);
-    throw error;
+  if (!apiKey) {
+    console.error("ERRO: Gemini API Key não encontrada.");
+    throw new Error("API Key ausente. Configure GEMINI_API_KEY no seu arquivo .env");
   }
-};
 
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const imageData = base64Image.split(',')[1] || base64Image;
+
+  // Log de diagnóstico (seguro: mostra apenas os 4 primeiros caracteres)
+  console.log(`[Gemini] Iniciando análise. API Key ativa: ${apiKey.substring(0, 4)}...`);
+
+  const prompt = `Analise a capa deste livro e extraia: Título, Autor, Editora, ISBN e Páginas. Retorne apenas JSON.`;
+
+  // Lista de modelos na ordem de maior compatibilidade (Adicionado 2.0 Flash)
+  const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+  let lastError: any = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`Tentando analisar com o modelo: ${modelName}...`);
+      const model = genAI.getGenerativeModel({ model: modelName });
+
+      const result = await model.generateContent([
+        {
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: imageData
+          }
+        },
+        { text: prompt }
+      ]);
+
+      const response = await result.response;
+      const text = response.text();
+
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) continue; // Tenta o próximo modelo se não retornar JSON
+
+      return JSON.parse(jsonMatch[0]);
+    } catch (error: any) {
+      console.warn(`Modelo ${modelName} falhou:`, error.message);
+      lastError = error;
+      // Se for erro de cota ou segurança, não adianta trocar o modelo
+      if (error.message?.includes("429") || error.message?.includes("403")) break;
+      continue;
+    }
+  }
+
+  // Se chegou aqui, todos falharam
+  if (lastError?.message?.includes("404")) {
+    throw new Error("Sua chave API não reconheceu nenhum dos modelos disponíveis (Flash ou Pro). Verifique se o Gemini está ativo no seu Google AI Studio.");
+  }
+
+  throw lastError || new Error("Falha ao analisar a imagem com todos os modelos disponíveis.");
+};

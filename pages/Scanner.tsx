@@ -69,8 +69,8 @@ const Scanner: React.FC<ScannerProps> = ({ onBookScanned, onClose }) => {
           coverUrl: imageData,
         };
         onBookScanned(newBook);
-      } catch (err) {
-        setError('Falha ao analisar o livro. Tente novamente.');
+      } catch (err: any) {
+        setError(err.message || 'Falha ao analisar o livro. Tente novamente.');
       } finally {
         setIsScanning(false);
       }
@@ -173,8 +173,8 @@ const Scanner: React.FC<ScannerProps> = ({ onBookScanned, onClose }) => {
                         scannedAt: new Date().toISOString().split('T')[0],
                         coverUrl: base64String,
                       });
-                    } catch (err) {
-                      setError('Falha ao analisar a imagem. Tente novamente.');
+                    } catch (err: any) {
+                      setError(err.message || 'Falha ao analisar a imagem. Tente novamente.');
                     } finally {
                       setIsScanning(false);
                     }
