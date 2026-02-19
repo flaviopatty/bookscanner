@@ -14,15 +14,23 @@ export const analyzeBookCover = async (base64Image: string) => {
   // Log de diagnóstico (seguro: mostra apenas os 4 primeiros caracteres)
   console.log(`[Gemini] Iniciando análise. API Key ativa: ${apiKey.substring(0, 4)}...`);
 
-  const prompt = `Analise a capa deste livro e extraia: Título, Autor, Editora, ISBN e Páginas. Retorne apenas JSON.`;
+  const prompt = `Analise a capa deste livro e extraia as informações rigorosamente no formato JSON abaixo:
+  {
+    "title": "título do livro",
+    "author": "autor",
+    "publisher": "editora",
+    "isbn": "isbn apenas números",
+    "pageCount": número de páginas
+  }
+  Retorne APENAS o JSON, sem markdown. Se não encontrar um dado, deixe vazio.`;
 
-  // Lista de modelos na ordem de maior compatibilidade (Adicionado 2.0 Flash)
+  // Lista de modelos na ordem de maior compatibilidade
   const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
   let lastError: any = null;
 
   for (const modelName of modelsToTry) {
     try {
-      console.log(`Tentando analisar com o modelo: ${modelName}...`);
+      console.log(`[Gemini] Tentando com ${modelName}...`);
       const model = genAI.getGenerativeModel({ model: modelName });
 
       const result = await model.generateContent([
@@ -37,15 +45,27 @@ export const analyzeBookCover = async (base64Image: string) => {
 
       const response = await result.response;
       const text = response.text();
+      console.log(`[Gemini] Resposta bruta de ${modelName}:`, text);
 
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) continue; // Tenta o próximo modelo se não retornar JSON
+      if (!jsonMatch) continue;
 
-      return JSON.parse(jsonMatch[0]);
+      const rawData = JSON.parse(jsonMatch[0].trim());
+
+      // Normalização: mapeia chaves em português para o formato esperado pelo resto do app
+      const normalized = {
+        title: rawData.title || rawData.titulo || 'Título Desconhecido',
+        author: rawData.author || rawData.autor || 'Autor Desconhecido',
+        publisher: rawData.publisher || rawData.editora || '',
+        isbn: rawData.isbn || '',
+        pageCount: rawData.pageCount || rawData.paginas || rawData.pages || null
+      };
+
+      console.log(`[Gemini] Dados extraídos e normalizados:`, normalized);
+      return normalized;
     } catch (error: any) {
-      console.warn(`Modelo ${modelName} falhou:`, error.message);
+      console.warn(`[Gemini] Modelo ${modelName} falhou:`, error.message);
       lastError = error;
-      // Se for erro de cota ou segurança, não adianta trocar o modelo
       if (error.message?.includes("429") || error.message?.includes("403")) break;
       continue;
     }
